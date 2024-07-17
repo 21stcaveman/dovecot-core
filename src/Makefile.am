@@ -48,6 +48,7 @@ SUBDIRS = \
 	lib-index \
 	lib-storage \
 	lib-sql \
+	lib-mongodb \
 	lib-lda \
 	lib-dict-backend \
 	anvil \

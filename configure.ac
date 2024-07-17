@@ -142,6 +142,11 @@ AS_HELP_STRING([--with-cassandra], [Build with Cassandra driver support]),
   TEST_WITH(cassandra, $withval),
   want_cassandra=no)
 
+AC_ARG_WITH(mongodb,
+AS_HELP_STRING([--with-mongodb], [Build with MongoDB support]),
+	TEST_WITH(mongodb, $withval),
+	want_mongodb=no)
+
 AC_ARG_WITH(stemmer,
 AS_HELP_STRING([--with-stemmer], [Build with libstemmer support (for FTS) (auto)]),
   TEST_WITH(stemmer, $withval),
@@ -671,6 +676,45 @@ AM_CONDITIONAL(BUILD_CASSANDRA, test "$build_cassandra" = "yes")
 AM_CONDITIONAL(SQL_PLUGINS, test "$want_sql" = "plugin")
 
 dnl **
+dnl ** MongoDB driver
+dnl **
+
+build_mongodb=no
+if test $want_mongodb != no; then
+	AC_CHECK_LIB(mongoc-1.0, mongoc_init, [
+		CFLAGS="$CFLAGS `pkg-config libmongoc-1.0 --cflags`"
+		AC_CHECK_HEADER(libmongoc-1.0/mongoc.h, [
+			MONGODB_CFLAGS=`pkg-config libmongoc-1.0 --cflags`
+			MONGODB_LIBS=`pkg-config libmongoc-1.0 --libs`
+			build_mongodb="yes"
+		], [
+			if test $want_mongodb = yes; then
+				AC_ERROR([Can't build with MongoDB support: mongo-c-driver development package not found!])
+			fi
+		])
+	], [
+		if test $want_mongodb = yes; then
+			AC_ERROR([Can't build with MongoDB support: mongo-c-driver not found!])
+		fi
+	])
+fi
+AM_CONDITIONAL(BUILD_MONGODB, test "$build_mongodb" = "yes")
+AC_SUBST(MONGODB_CFLAGS)
+AC_SUBST(MONGODB_LIBS)
+
+if test $build_mongodb = yes; then
+	AC_DEFINE(PASSDB_MONGODB,, Build with MongoDB support)
+	AC_DEFINE(USERDB_MONGODB,, Build with MongoDB support)
+	AC_DEFINE(HAVE_MONGODB,, Build with MongoDB support)
+	passdb="$passdb mongodb"
+	userdb="$userdb mongodb"
+	#dict_drivers="$dict_drivers mongodb"
+else
+	not_passdb="$not_passdb mongodb"
+	not_userdb="$not_userdb mongodb"
+fi
+
+dnl **
 dnl ** Plugins
 dnl **
 
@@ -796,6 +840,7 @@ doc/example-config/conf.d/Makefile
 src/Makefile
 src/lib/Makefile
 src/lib-sql/Makefile
+src/lib-mongodb/Makefile
 src/lib-auth/Makefile
 src/lib-auth-client/Makefile
 src/lib-charset/Makefile
